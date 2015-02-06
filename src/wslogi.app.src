@@ -1,0 +1,13 @@
+%% vim: set ft=erlang : -*- erlang -*-
+{application, wslogi,
+ [
+  {description, "A websocket logging framework for Erlang/OTP"},
+  {vsn, git},
+  {registered, [wslogi_sup]},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { wslogi_app, []}},
+  {env, []}
+ ]}.
