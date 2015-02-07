@@ -16,6 +16,12 @@
 %%----------------------------------------------------------------------------------------------------------------------
 %% @private
 start(_StartType, _StartArgs) ->
+    Dispatch = cowboy_router:compile(
+                 [
+                  {'_', [{"/", wslogi_ws_handler, []}]}
+                 ]),
+    {ok, _} = cowboy:start_http(http, 100, [{port, 8080}], [{env, [{dispatch, Dispatch}]}]),
+
     wslogi_sup:start_link().
 
 %% @private

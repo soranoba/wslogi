@@ -6,7 +6,8 @@
   {registered, [wslogi_sup]},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  cowboy
                  ]},
   {mod, { wslogi_app, []}},
   {env, []}
