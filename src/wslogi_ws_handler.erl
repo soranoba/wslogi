@@ -20,7 +20,7 @@
 -record(?MODULE,
         {
           log_level = ?NONE :: wslogi_msg:log_level(),
-          ip                :: binary(),
+          ip                :: inet:ip_address(),
           path              :: binary()
         }).
 
@@ -68,6 +68,8 @@ websocket_terminate(_Reason, _Req, _State) ->
 -spec wsclient_command(Msg :: binary(), State) -> {ok, Response :: binary(), State} | {error, State} when
       State :: #?MODULE{}.
 wsclient_command(<<"help", _/binary>>, State) ->
-    {ok, <<"dummy">>, State};
-wsclient_command(_, #?MODULE{ip = Ip, path = Path} = State) ->
-    {ok, <<(moyo_binary:to_binary(Ip))/binary, " ", Path/binary>>, State}.
+    {ok, wslogi_help:get_help(), State};
+%wsclient_command(_, #?MODULE{ip = Ip, path = Path} = State) ->
+%    {ok, <<(moyo_binary:to_binary(Ip))/binary, " ", Path/binary>>, State};
+wsclient_command(_, State) ->
+    {error, State}.

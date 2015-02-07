@@ -29,4 +29,7 @@ start_link() ->
 %%----------------------------------------------------------------------------------------------------------------------
 %% @private
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    Help = wslogi_help,
+
+    {ok, {{one_for_one, 5, 10},
+          [{Help, {Help, start_link, []}, permanent, 1000, worker, [Help]}]}}.
