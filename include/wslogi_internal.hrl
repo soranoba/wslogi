@@ -10,3 +10,5 @@
 -define(INFO,      2#001000000). %  64
 -define(VERBOSE,   2#010000000). % 128
 -define(DEBUG,     2#100000000). % 256
+
+-define(MAX_LEVEL, 2#111111111).
