@@ -19,9 +19,8 @@
 
 -record(?MODULE,
         {
-          log_level = ?NONE   :: wslogi_msg:log_level(),
+          log_level = ?MAX_LEVEL   :: wslogi_msg:log_level(),
           ip                  :: inet:ip_address(),
-          path_info           :: [binary()],
           do_watching = false :: boolean(),
           filter = []         :: [binary()]
         }).
@@ -36,7 +35,9 @@ init({tcp, http}, _Req, _Opts) ->
 websocket_init(_TransportName, Req0, _Opts) ->
     {{Ip, _},  Req1} = cowboy_req:peer(Req0),
     {PathInfo, Req2} = cowboy_req:path_info(Req1),
-    {ok, Req2, #?MODULE{ip = Ip, path_info = PathInfo}}.
+
+    ok = wslogi_msg:watch(PathInfo),
+    {ok, Req2, #?MODULE{ip = Ip}}.
 
 %% @doc This function will call when received a message using websocket.
 %% @private
@@ -52,7 +53,7 @@ websocket_handle(_Data, Req, State) ->
 %% @private
 websocket_info(Info, Req, #?MODULE{log_level = LogLevel} = State) ->
     case wslogi_msg:get(LogLevel, Info) of
-        {ok, Msg} -> {reply, {text, Msg}, Req, State};
+        {ok, Msg} -> {reply, {text, <<Msg/binary, "\n">>}, Req, State};
         error     -> {ok, Req, State}
     end.
 
