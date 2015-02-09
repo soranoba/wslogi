@@ -34,7 +34,8 @@
 -type wslogi_msg() :: {'$wslogi', log_level(), message()}.
 %% Log message format at `wslogi'.
 
--define(GPROC_NAME(Path), {p, l, {wslogi, Path}}).
+-define(GPROC_NAME(Path), {p, l, ?GPROC_KEY(Path)}).
+-define(GPROC_KEY(Path),  {wslogi, Path}).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported API
@@ -65,16 +66,16 @@ send(LogLevel, Path, Format, Args) ->
 %% @doc Monitor the messages that are sent to the path.
 -spec watch(PathInfo :: [binary()]) -> ok.
 watch(PathInfo) ->
-    watch([<<"/">>], PathInfo).
+    L    = watch([<<"/">>], PathInfo),
+    true = gproc:mreg(p, l, [{?GPROC_KEY(K), gproc:default(?GPROC_NAME(K))} || K <- L]),
+    ok.
 
 %% @see watch/1
--spec watch([binary()], [binary()]) -> ok.
-watch(MonitorPath, RestPath) ->
-    true = gproc:reg(?GPROC_NAME(filename:join(MonitorPath))),
-    case RestPath of
-        []      -> ok;
-        [H | T] -> watch(MonitorPath ++ [H], T)
-    end.
+-spec watch([binary()], [binary()]) -> [binary()].
+watch([M | MonitorPath], [H | T]) ->
+    watch([filename:join([M, H]), M | MonitorPath], T);
+watch(MonitorPath, _) ->
+    MonitorPath.
 
 %% @doc Calling process unmonitor the message that are send to the path.
 -spec unwatch() -> ok.
