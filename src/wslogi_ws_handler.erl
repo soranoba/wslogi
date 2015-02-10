@@ -53,8 +53,11 @@ websocket_handle(_Data, Req, State) ->
 %% @private
 websocket_info(Info, Req, #?MODULE{log_level = LogLevel} = State) ->
     case wslogi_msg:get(LogLevel, Info) of
-        {ok, Msg} -> {reply, {text, <<Msg/binary, "\n">>}, Req, State};
-        error     -> {ok, Req, State}
+        {ok, Msg} ->
+            MsgBin = wslogi_msg:message_to_binary(Msg),
+            {reply, {text, MsgBin}, Req, State};
+        error ->
+            {ok, Req, State}
     end.
 
 websocket_terminate(_Reason, _Req, _State) ->

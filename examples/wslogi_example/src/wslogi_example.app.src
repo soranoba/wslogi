@@ -1,0 +1,14 @@
+%% vim: set ft=erlang : -*- erlang -*-
+{application, wslogi_example,
+ [
+  {vsn, git},
+  {registered, [wslogi_example_sup]},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  wslogi,
+                  cowboy
+                 ]},
+  {mod, { wslogi_example_app, []}},
+  {env, []}
+ ]}.

@@ -15,7 +15,8 @@
          put/2,
          send/4,
          watch/1,
-         unwatch/0
+         unwatch/0,
+         message_to_binary/1
         ]).
 
 -export_type([
@@ -29,7 +30,7 @@
 %%----------------------------------------------------------------------------------------------------------------------
 
 -type log_level()  :: 0..511.
--type message()    :: binary().
+-type message()    :: {[{wslogi:header_key(), wslogi:header_value()}], {module(), Line :: non_neg_integer()}, Msg :: binary()}.
 %% Log message entered by the user.
 -type wslogi_msg() :: {'$wslogi', log_level(), message()}.
 %% Log message format at `wslogi'.
@@ -50,7 +51,7 @@ get(_, _) ->
 
 %% @doc Specify the log level and create a message.
 -spec put(log_level(), message()) -> wslogi_msg().
-put(LogLevel, Msg) when LogLevel > ?NONE andalso LogLevel =< ?MAX_LEVEL andalso is_binary(Msg) ->
+put(LogLevel, Msg) when LogLevel > ?NONE andalso LogLevel =< ?MAX_LEVEL ->
     {'$wslogi', LogLevel, Msg};
 put(LogLevel, Msg) ->
     error(badarg, [LogLevel, Msg]).
@@ -58,7 +59,8 @@ put(LogLevel, Msg) ->
 %% @doc Send a log message
 -spec send(log_level(), Path :: file:filename(), io:format(), Args :: [term()]) -> ok.
 send(LogLevel, Path, Format, Args) ->
-    Msg = list_to_binary(io_lib:format(Format, Args)),
+    MsgBin = list_to_binary(io_lib:format(Format, Args)),
+    Msg    = binary_to_message(MsgBin),
     %% MEMO: "foo/bar/" -> <<"/foo/bar">>
     _   = gproc:send(?GPROC_NAME(filename:join([<<>>, Path])), ?MODULE:put(LogLevel, Msg)),
     ok.
@@ -81,3 +83,30 @@ watch(MonitorPath, _) ->
 -spec unwatch() -> ok.
 unwatch() ->
     gproc:goodbye().
+
+-spec message_to_binary(message()) -> binary().
+message_to_binary({Headers, {Mod, Line}, Msg}) ->
+    HeaderBin = case list_to_binary([ [$, , " " | io_lib:format("~p: ~p", [X, Y])] || {X, Y} <- Headers]) of
+                    <<_, _, H/binary>> -> H;
+                    _                  -> <<>>
+                end,
+    LineInfo = list_to_binary(io_lib:format("~p:~p", [Mod, Line])),
+    <<LineInfo/binary, " [", HeaderBin/binary, "] ", Msg/binary, "\n">>.
+
+%%----------------------------------------------------------------------------------------------------------------------
+%% Internal Functions
+%%----------------------------------------------------------------------------------------------------------------------
+
+%% @doc `binary/0' to `message/0'
+-spec binary_to_message(Msg :: binary()) -> message().
+binary_to_message(Msg) when is_binary(Msg) ->
+    try
+        exit(get_trace)
+    catch
+        exit:get_trace ->
+            StackTrace  = erlang:get_stacktrace(),
+            {Mod, Line} = lists:foldl(fun({Mod0, _, _, [{file, _}, {line, L}]}, []) when Mod0 =/= ?MODULE -> {Mod0, L};
+                                         (_, Acc) -> Acc
+                                      end, [], StackTrace),
+            {wslogi_server:get_headers(), {Mod, Line}, Msg}
+    end.
