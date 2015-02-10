@@ -50,7 +50,10 @@ set_headers(KVs) ->
 %% @see wslogi:get_headers/0
 -spec get_headers() -> [{key(), value()}].
 get_headers() ->
-    ets:lookup(?MODULE, self()).
+    case ets:lookup(?MODULE, self()) of
+        [{_, V}] -> V;
+        []       -> []
+    end.
 
 %% @see wslogi:delete_headers/1
 -spec delete_headers([key()]) -> ok.
@@ -72,17 +75,23 @@ init([]) ->
     {ok, #?MODULE{}}.
 
 %% @private
-handle_call({set_headers, KVs}, From, State) ->
-    Assoc0 = ets:lookup(?MODULE, From),
+handle_call({set_headers, KVs}, {From, _Ref}, State) ->
+    Assoc0 = case ets:lookup(?MODULE, From) of
+                 [] -> monitor(process, From), [];
+                 A  -> A
+             end,
     Assoc  = lists:ukeymerge(1, lists:ukeysort(1, KVs), Assoc0),
     true   = ets:insert(?MODULE, {From, Assoc}),
     {reply, ok, State};
-handle_call({delete_headers, Keys}, From, State) ->
-    Assoc0 = ets:lookup(?MODULE, From),
-    Assoc  = lists:filter(fun({K, _}) -> not lists:member(K, Keys) end, Assoc0),
-    true   = ets:insert(?MODULE, {From, Assoc}),
+handle_call({delete_headers, Keys}, {From, _Ref}, State) ->
+    case ets:lookup(?MODULE, From) of
+        []               -> ok;
+        [{From, Assoc0}] ->
+            Assoc  = lists:filter(fun({K, _}) -> not lists:member(K, Keys) end, Assoc0),
+            true   = ets:insert(?MODULE, {From, Assoc})
+    end,
     {reply, ok, State};
-handle_call(clear_headers, From, State) ->
+handle_call(clear_headers, {From, _Ref}, State) ->
     true = ets:delete(?MODULE, From),
     {reply, ok, State};
 handle_call(_Request, _From, State) ->
@@ -93,6 +102,9 @@ handle_cast(_Request, State) ->
     {noreply, State}.
 
 %% @private
+handle_info({'DOWN', _Ref, process, Pid, _Reason}, State) ->
+    true = ets:delete(?MODULE, Pid),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 

@@ -5,13 +5,14 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(ensureExited(Pid),
-        (fun() -> process_flag(trap_exit, true),
+        (fun() -> Old = process_flag(trap_exit, true),
                   exit(Pid, shutdown),
                   receive
                       {'EXIT', Pid, _} -> ?assert(true)
                   after 50 ->
                           ?assert(timeout)
-                  end
+                  end,
+                  process_flag(trap_exit, Old)
          end)()).
 
 %%----------------------------------------------------------------------------------------------------------------------
