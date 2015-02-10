@@ -30,3 +30,12 @@ get_help_test_() ->
                ?assertEqual(Data, wslogi_help:get_help())
        end}
      ]}.
+
+coverage_test_() ->
+    [
+     ?_assertMatch({noreply, _}, wslogi_help:handle_call(a, self(), undefined)),
+     ?_assertMatch({noreply, _}, wslogi_help:handle_cast(a, undefined)),
+     ?_assertMatch({noreply, _}, wslogi_help:handle_info(a, undefined)),
+     ?_assertEqual(ok,           wslogi_help:terminate(a, undefined)),
+     ?_assertMatch({ok, _},      wslogi_help:code_change(old, undefined, extra))
+    ].

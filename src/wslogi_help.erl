@@ -6,6 +6,10 @@
 
 -behaviour(gen_server).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
 %%----------------------------------------------------------------------------------------------------------------------
@@ -49,13 +53,9 @@ get_help() ->
 
 %% @private
 init([]) ->
-    Help = case get_priv() of
-               error     -> <<>>;
-               {ok, Dir} ->
-                   Path = filename:join([Dir, ?HELP_FILE]),
-                   {ok, Help0} = file:read_file(Path),
-                   Help0
-           end,
+    Dir        = get_priv(),
+    Path       = filename:join([Dir, ?HELP_FILE]),
+    {ok, Help} = file:read_file(Path),
     {ok, #?MODULE{help = Help}}.
 
 %% @private
@@ -85,13 +85,33 @@ code_change(_OldVsn, State, _Extra) ->
 %%----------------------------------------------------------------------------------------------------------------------
 
 %% @doc Get the priv path of wslogi.
--spec get_priv() -> {ok, file:filename()} | error.
+-spec get_priv() -> file:filename().
 get_priv() ->
     case code:priv_dir(wslogi) of
         {error, bad_name} ->
-            case code:which(wslogi_app) of
-                Atom when is_atom(Atom) -> error;
-                File                    -> {ok, filename:join([filename:dirname(filename:dirname(File)), "priv"])}
-            end;
-        Path -> {ok, Path}
+            Compile = proplists:get_value(compile, ?MODULE:module_info()),
+            Source  = proplists:get_value(source, Compile),
+            filename:join([filename:dirname(filename:dirname(Source)), "priv"]);
+        Path ->
+            Path
     end.
+
+%%----------------------------------------------------------------------------------------------------------------------
+%% Internal Tests
+%%----------------------------------------------------------------------------------------------------------------------
+
+-ifdef(TEST).
+get_priv_test_() ->
+    {foreach,
+     fun()  -> meck:new(code, [passthrough, unstick]) end,
+     fun(_) -> meck:unload() end,
+     [
+      {"When priv_dir returns bad_name, guess the path",
+       fun() ->
+               Path = get_priv(),
+
+               ok = meck:expect(code, priv_dir, 1, {error, bad_name}),
+               ?assertEqual(Path, get_priv())
+       end}
+     ]}.
+-endif.

@@ -33,6 +33,12 @@ server_test_() ->
        fun() ->
                ?assertEqual([], wslogi_server:get_headers())
        end},
+      {"If trying to set a existent key, it is overwrite",
+       fun() ->
+               ?assertEqual(ok,                    wslogi_server:set_headers([{a,a}, {b,b}])),
+               ?assertEqual(ok,                    wslogi_server:set_headers([{a,b}, {c,c}])),
+               ?assertEqual([{a,b}, {b,b}, {c,c}], wslogi_server:get_headers())
+       end},
       {"It can use delete",
        fun() ->
                Headers = [{a, a}, {b, b}, {c, c}],
@@ -46,6 +52,10 @@ server_test_() ->
                ?assertEqual(ok,       wslogi_server:set_headers(Headers)),
                ?assertEqual(ok,       wslogi_server:delete_headers([a, d])),
                ?assertEqual([{b, b}], wslogi_server:get_headers())
+       end},
+      {"It is ignored, when not yet been registered anything",
+       fun() ->
+              ?assertEqual(ok, wslogi_server:delete_headers([a]))
        end},
       {"It can use clear",
        fun() ->
@@ -67,3 +77,12 @@ server_test_() ->
                _ = meck:unload()
        end}
       ]}.
+
+coverage_test_() ->
+    [
+     ?_assertMatch({noreply, _}, wslogi_server:handle_call(a, self(), undefined)),
+     ?_assertMatch({noreply, _}, wslogi_server:handle_cast(a, undefined)),
+     ?_assertMatch({noreply, _}, wslogi_server:handle_info(a, undefined)),
+     ?_assertEqual(ok,           wslogi_server:terminate(a, undefined)),
+     ?_assertMatch({ok, _},      wslogi_server:code_change(old, undefined, extra))
+    ].

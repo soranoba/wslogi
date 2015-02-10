@@ -77,8 +77,8 @@ init([]) ->
 %% @private
 handle_call({set_headers, KVs}, {From, _Ref}, State) ->
     Assoc0 = case ets:lookup(?MODULE, From) of
-                 [] -> monitor(process, From), [];
-                 A  -> A
+                 []          -> monitor(process, From), [];
+                 [{From, A}] -> A
              end,
     Assoc  = lists:ukeymerge(1, lists:ukeysort(1, KVs), Assoc0),
     true   = ets:insert(?MODULE, {From, Assoc}),
