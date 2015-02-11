@@ -113,11 +113,8 @@ unwatch() ->
 -spec message_to_binary(message()) -> binary().
 message_to_binary({{{Ye, Mo, Da}, {Ho, Mi, Se}}, Headers, {Mod, Line}, Msg}) ->
     Datetime  = io_lib:format("~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B", [Ye, Mo, Da, Ho, Mi, Se]),
-    HeaderBin = case list_to_binary([ [$, , " " | io_lib:format("~p: ~p", [X, Y])] || {X, Y} <- Headers]) of
-                    <<_, _, H/binary>> -> H;
-                    _                  -> <<>>
-                end,
-    LineInfo = io_lib:format("~p:~p", [Mod, Line]),
+    HeaderBin = string:join([io_lib:format("~p: ~p", [X, Y]) || {X, Y} <- Headers], ", "),
+    LineInfo  = io_lib:format("~p:~p", [Mod, Line]),
     iolist_to_binary([Datetime, " ", LineInfo, " [", HeaderBin, "] ", Msg, "\n"]).
 
 %% @doc `binary/0' to `message/0'

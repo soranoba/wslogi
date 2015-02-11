@@ -4,20 +4,19 @@ The wslogi commands are:
     - `filter add    <word>`
     - `filter remove <number>`
     - `filter show`
-    - `filter ip     [<address>]`
-        - default: your ip address  
+    - `filter header <key> <value>`
+        - Special case:
+            - filter header ip [<address>]
+                - default: your ip address
+                - e.g. {192,168,0,1}
 - help
     - `help`
 - level
     - `level list`
     - `level show`
-    - `level +<number>`
-    - `level -<number>`
-    - `level <number> [<number>]`
+    - `level <number>`
+    - `level [+ | -]<level> [ [+ | -]<level> ]`
 - start
     - `start`
 - stop
-    - `stop` 
-- trace
-    - `trace on`
-    - `trace off`
+    - `stop`
