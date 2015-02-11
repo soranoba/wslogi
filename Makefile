@@ -1,7 +1,7 @@
 APP=wslogi
 DIALYZER_OPTS=-Werror_handling -Wrace_conditions -Wunmatched_returns
 
-LIBS=$(ERL_LIBS):deps
+LIBS=$(ERL_LIBS):deps:examples
 
 all: compile xref eunit dialyze
 

@@ -1,8 +1,5 @@
 %% @copyright 2015 Hinagiku Soranoba All Rights Reserved.
-%%
-%% @doc `wslogi' application supervisor.
-%% @private
--module(wslogi_sup).
+-module(wslogi_example_sup).
 
 -behaviour(supervisor).
 
@@ -29,11 +26,4 @@ start_link() ->
 %%----------------------------------------------------------------------------------------------------------------------
 %% @private
 init([]) ->
-    Help  = wslogi_help,
-    Loger = wslogi_server,
-
-    {ok, {{one_for_one, 5, 10},
-          [
-           {Help, {Help,  start_link, []}, permanent, 1000, worker, [Help]},
-           {Loger,{Loger, start_link, []}, permanent, 1000, worker, [Loger]}
-          ]}}.
+    {ok, {{one_for_one, 10, 10}, []}}.
