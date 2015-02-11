@@ -1,6 +1,6 @@
 %% @copyright 2015 Hinagiku Soranoba All Rights Reserved.
 %%
-%% @doc A websocket logging framework for Erlang/OTP
+%% @doc A websocket logging framework for Erlang/OTP <br />
 -module(wslogi).
 -include("wslogi_internal.hrl").
 
@@ -39,7 +39,7 @@
 %% Types
 %%----------------------------------------------------------------------------------------------------------------------
 
--type header_key()   :: term().
+-type header_key()   :: atom().
 %% @see wslogi:set_headers/1
 -type header_value() :: term().
 %% @see wslogi:set_headers/1
@@ -65,6 +65,7 @@ stop(Port) ->
 %% @doc Add the process-specific log header.
 %%
 %% Specific key-value
+%%
 %% | key-value                 | description                            |
 %% |:--------------------------|:---------------------------------------|
 %% | `{ip, inet:ip_address()}' | It is used in the `filter ip' command. |

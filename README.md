@@ -14,6 +14,7 @@ Wslogi is a websocket logging framework for Erlang.
 ## Usage
 - [Sample](examples/wslogi_example)
 - [Documents](doc)
+- [Websocket client command](priv/help.md)
 
 ## Websocket Client
 It may use what you like. I'm using the this.

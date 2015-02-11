@@ -10,7 +10,10 @@
 A websocket logging framework for Erlang/OTP.
 Copyright (c) 2015 Hinagiku Soranoba All Rights Reserved.
 
+<a name="description"></a>
 
+## Description ##
+<br />
 <a name="types"></a>
 
 ## Data Types ##
@@ -23,7 +26,7 @@ Copyright (c) 2015 Hinagiku Soranoba All Rights Reserved.
 
 
 <pre><code>
-header_key() = term()
+header_key() = atom()
 </code></pre>
 
 
@@ -252,7 +255,10 @@ set_headers(KVs::[{<a href="#type-header_key">header_key()</a>, <a href="#type-h
 Add the process-specific log header.
 
 
+
 Specific key-value
+
+
 | key-value                 | description                            |
 |:--------------------------|:---------------------------------------|
 | `{ip, inet:ip_address()}` | It is used in the `filter ip` command. |
