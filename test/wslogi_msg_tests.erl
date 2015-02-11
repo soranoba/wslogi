@@ -6,7 +6,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -on_load(init/0).
--define(Message,   <<"message">>).
+-define(Message, <<"message">>).
+-define(Headers, [{ip, {192,168,0,1}}, {method, <<"GET">>}]).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Unit Tests
@@ -29,23 +30,44 @@ get_and_put_test_() ->
       fun() ->
               ?assertError(_, wslogi_msg:put(?MAX_LEVEL + 1, ?Message)),
               ?assertError(_, wslogi_msg:put(-1, ?Message))
-      end},
-     {"It is thrown error if the message isn't a binary",
-      fun() ->
-              ?assertError(_, wslogi_msg:put(?DEBUG, "message"))
       end}
     ].
 
+message_test_() ->
+    {setup,
+     fun setup/0,
+     fun teardown/1,
+     [
+      {"It can retrieve the timestamp from the message",
+       fun() ->
+               ?assertMatch({{_,_,_}, {_,_,_}}, wslogi_msg:get_timestamp(wslogi_msg:binary_to_message(?Message)))
+       end},
+      {"It can retrieve the headers from the message",
+       fun() ->
+               ?assertEqual(?Headers, wslogi_msg:get_headers(wslogi_msg:binary_to_message(?Message)))
+       end},
+      {"It can retrieve the headers from the message",
+       fun() ->
+               ?assertEqual({?MODULE, ?LINE}, wslogi_msg:get_line(wslogi_msg:binary_to_message(?Message)))
+       end},
+      {"It can retrieve the message (binary) from the message",
+       fun() ->
+               ?assertEqual(?Message, wslogi_msg:get_message_binary(wslogi_msg:binary_to_message(?Message)))
+       end}
+     ]}.
+
 watch_and_send_test_() ->
     {foreach, local,
-     fun()  -> ?assertEqual(ok, wslogi_msg:watch([<<"hoge">>, <<"fugo">>])) end,
-     fun(_) -> ?assertEqual(ok, wslogi_msg:unwatch()) end,
+     fun setup/0,
+     fun teardown/1,
      [
       {"It can get the message of the specified path",
        fun() ->
                ?assertEqual(ok, wslogi_msg:send(?DEBUG, "/hoge/fugo", "~p", ["message"])),
                receive
-                   Msg -> ?assertEqual({ok, <<"\"message\"">>}, wslogi_msg:get(?DEBUG, Msg))
+                   Msg ->
+                       {ok, M} = wslogi_msg:get(?DEBUG, Msg),
+                       ?assertEqual(<<"\"message\"">>, wslogi_msg:get_message_binary(M))
                after 50 ->
                        ?assert(timeout)
                end
@@ -54,7 +76,9 @@ watch_and_send_test_() ->
        fun() ->
                ?assertEqual(ok, wslogi_msg:send(?DEBUG, "/", "hoge", [])),
                receive
-                   Msg -> ?assertEqual({ok, <<"hoge">>}, wslogi_msg:get(?DEBUG, Msg))
+                   Msg ->
+                       {ok, M} = wslogi_msg:get(?DEBUG, Msg),
+                       ?assertEqual(<<"hoge">>, wslogi_msg:get_message_binary(M))
                after 50 ->
                        ?assert(timeout)
                end
@@ -64,7 +88,9 @@ watch_and_send_test_() ->
                ?assertEqual(ok, wslogi_msg:send(?DEBUG, "/hoge/fugo/child", "child", [])),
                ?assertEqual(ok, wslogi_msg:send(?DEBUG, "/hoge/fugo", "specified", [])),
                receive
-                   Msg -> ?assertEqual({ok, <<"specified">>}, wslogi_msg:get(?DEBUG, Msg))
+                   Msg ->
+                       {ok, M} = wslogi_msg:get(?DEBUG, Msg),
+                       ?assertEqual(<<"specified">>, wslogi_msg:get_message_binary(M))
                after 50 ->
                        ?assert(timeout)
                end
@@ -76,7 +102,9 @@ watch_and_send_test_() ->
                ?assertEqual(ok, wslogi_msg:send(?DEBUG, "/hoge/fugo/", "hoge", [])),
                [begin
                     receive
-                        Msg -> ?assertEqual({ok, <<"hoge">>}, wslogi_msg:get(?DEBUG, Msg))
+                        Msg ->
+                            {ok, M} = wslogi_msg:get(?DEBUG, Msg),
+                            ?assertEqual(<<"hoge">>, wslogi_msg:get_message_binary(M))
                     after 50 ->
                             ?assert(timeout)
                     end
@@ -84,7 +112,42 @@ watch_and_send_test_() ->
        end}
       ]}.
 
+message_to_binary_test_() ->
+    [
+     {"Check the format (1)",
+      fun() ->
+              Msg = {{{2015,2,11}, {14,1,30}}, [{method, <<"GET">>}, {test, true}], {wslogi_msg, 120}, <<"message">>},
+              ?assertEqual(
+                 <<"2015-02-11 14:01:30 wslogi_msg:120 [method: <<\"GET\">>, test: true] message\n">>,
+                 wslogi_msg:message_to_binary(Msg)
+                )
+      end},
+     {"Check the format (2)",
+      fun() ->
+              Msg = {{{2015,2,11}, {14,1,30}}, [], {wslogi_msg, 120}, <<"message">>},
+              ?assertEqual(
+                 <<"2015-02-11 14:01:30 wslogi_msg:120 [] message\n">>,
+                 wslogi_msg:message_to_binary(Msg)
+                )
+      end}
+    ].
+
+%%----------------------------------------------------------------------------------------------------------------------
+%% Internal Functions
+%%----------------------------------------------------------------------------------------------------------------------
+
 -spec init() -> ok.
 init() ->
     _ = application:ensure_all_started(gproc),
     ok.
+
+-spec setup() -> ok.
+setup() ->
+    ok = wslogi_msg:watch([<<"hoge">>, <<"fugo">>]),
+    ok = meck:new(wslogi_server),
+    ok = meck:expect(wslogi_server, get_headers, 0, ?Headers).
+
+-spec teardown(term()) -> ok.
+teardown(_) ->
+    _  = meck:unload(),
+    ok = wslogi_msg:unwatch().
