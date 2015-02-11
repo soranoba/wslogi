@@ -6,10 +6,6 @@
 
 -behaviour(gen_server).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
 %%----------------------------------------------------------------------------------------------------------------------
@@ -95,23 +91,3 @@ get_priv() ->
         Path ->
             Path
     end.
-
-%%----------------------------------------------------------------------------------------------------------------------
-%% Internal Tests
-%%----------------------------------------------------------------------------------------------------------------------
-
--ifdef(TEST).
-get_priv_test_() ->
-    {foreach,
-     fun()  -> meck:new(code, [passthrough, unstick]) end,
-     fun(_) -> meck:unload() end,
-     [
-      {"When priv_dir returns bad_name, guess the path",
-       fun() ->
-               Path = get_priv(),
-
-               ok = meck:expect(code, priv_dir, 1, {error, bad_name}),
-               ?assertEqual(Path, get_priv())
-       end}
-     ]}.
--endif.

@@ -30,7 +30,7 @@ edoc:
 	@./rebar doc skip_deps=true
 
 start: compile
-	@ERL_LIBS=$(LIBS) erl +stbt db +K true -pz ebin -s reloader -eval 'erlang:display(application:ensure_all_started($(APP))).'
+	@ERL_LIBS=$(LIBS) erl +stbt db +K true -pz ebin -eval 'erlang:display(application:ensure_all_started($(APP))).'
 
 .dialyzer.plt:
 	touch .dialyzer.plt
@@ -42,4 +42,4 @@ dialyze: .dialyzer.plt compile
 
 # Interactive eunit (Experimental)
 iunit: compile
-	@ERL_LIBS=$(LIBS) erl +K true -pz ebin .eunit -s reloader -eval 'erlang:display(application:ensure_all_started($(APP))).'
+	@ERL_LIBS=$(LIBS) erl +K true -pz ebin .eunit -eval 'erlang:display(application:ensure_all_started($(APP))).'
