@@ -1,35 +1,27 @@
 # wslogi
 A websocket logging framework for Erlang/OTP
 
-## Websocket Client
+## Overview
+Wslogi is a websocket logging framework for Erlang.
 
-[progrium/wssh](https://github.com/progrium/wssh)
-
-1. install libevent
-
-```bash
-$ sudo apt-get install libevent-dev
-```
-
-2. install [setuptools](https://pypi.python.org/pypi/setuptools)
-
-```bash
-$ wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python
-```
-
-3. install [progrium/wssh](https://github.com/progrium/wssh)
-
-```bash
-$ git clone git://github.com/progrium/wssh.git
-$ cd wssh
-$ python setup.py install
-```
+- Multiple log level
+ - The websocket client can specify the log level
+- You can specify the output path of the log
+ - The websocket client can specify the path at the time of connection
+ - Parent path also can get the log of the child path
+- The websocket client can filter the log
 
 ## Usage
+- [Sample](examples/wslogi_example)
+- [Documents](doc)
 
-```bash
-$ wssh localhost:8080
-```
+## Websocket Client
+It may use what you like. I'm using the this.
+
+- [progrium/wssh](https://github.com/progrium/wssh)
+
+## Contribute
+Pull request is welcome =D
 
 ## License
 

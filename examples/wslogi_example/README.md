@@ -21,7 +21,7 @@ Eshell V5.10.4  (abort with ^G)
 Terminal B:
 ```bash
 $ wssh localhost:8080
-level +10
+level 10
 start
 ```
 

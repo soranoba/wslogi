@@ -69,7 +69,7 @@ websocket_info(Info, Req, #?MODULE{do_watching = true, log_level = LogLevel, fil
         {ok, Msg} ->
             case do_show_message(Filters, Msg) andalso wslogi_msg:message_to_binary(Msg) of
                 false  -> {ok, Req, State};
-                MsgBin -> {reply, {text, MsgBin}, State}
+                MsgBin -> {reply, {text, MsgBin}, Req, State}
             end;
         error ->
             {ok, Req, State}
@@ -511,23 +511,23 @@ websocket_info_test_() ->
                 },
     [
      {"filteling: no filter",
-      ?_assertMatch({reply, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0))},
+      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0))},
      {"filteling: log_level",
-      ?_assertMatch({ok, _, _},    websocket_info(wslogi_msg:put(?INFO, Msg), req, State0))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?INFO, Msg), req, State0))},
      {"filteling: using word (partial match)",
-      ?_assertMatch({reply, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"ssa">>]}))},
+      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"ssa">>]}))},
      {"filteling: using word (not match)",
-      ?_assertMatch({ok, _, _},    websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"hoge">>]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"hoge">>]}))},
      {"filteling: using header",
-      ?_assertMatch({reply, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{ip, <<"{192,168,0,1}">>}]}))},
+      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{ip, <<"{192,168,0,1}">>}]}))},
      {"filteling: using header (not exist this key in headers)",
-      ?_assertMatch({ok, _, _},    websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{hoge, <<"fugo">>}]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{hoge, <<"fugo">>}]}))},
      {"filteling: usgin header (not match)",
-      ?_assertMatch({ok, _, _},    websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{ip, <<"{127,0,0,1}">>}]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{ip, <<"{127,0,0,1}">>}]}))},
      {"filteling: A and B...",
-      ?_assertMatch({ok, _, _},    websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"hoge">>, {ip, <<"{192,168,0,1}">>}]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"hoge">>, {ip, <<"{192,168,0,1}">>}]}))},
      {"filteling: do_watching",
-      ?_assertMatch({ok, _, _},    websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{do_watching = false}))}
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{do_watching = false}))}
     ].
 
 level_number_test_() ->
