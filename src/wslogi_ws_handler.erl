@@ -21,7 +21,8 @@
 %% Macros & Records
 %%----------------------------------------------------------------------------------------------------------------------
 
--type filter() :: binary() | {Key :: wslogi:header_key(), binary()}.
+-type mp()     :: term(). % `re:mp/0'
+-type filter() :: {re, binary(), mp()} | {header, Key :: wslogi:header_key(), binary()}.
 
 -record(?MODULE,
         {
@@ -204,8 +205,13 @@ wsclient_filter_add(Arg, #?MODULE{filters = Filters} = State0) ->
                  _ ->
                      Value0
              end,
-    {ok, CurrentFilters, State1} = wsclient_filter_show(State0#?MODULE{filters = [Value1 | Filters]}),
-    {ok, <<"==> Update filters\n", CurrentFilters/binary>>, State1}.
+    try
+        {ok, MP} = re:compile(Value1),
+        {ok, CurrentFilters, State1} = wsclient_filter_show(State0#?MODULE{filters = [{re, Value1, MP} | Filters]}),
+        {ok, <<"==> Update filters\n", CurrentFilters/binary>>, State1}
+    catch
+        _:_ -> {ok, <<"[ERROR] Bad arguments.\n">>, State0}
+    end.
 
 %% @doc `filter show'
 -spec wsclient_filter_show(state()) -> {ok, Response :: binary(), state()}.
@@ -247,7 +253,7 @@ wsclient_filter_header(Args, #?MODULE{ip = Ip, filters = Filters} = State0) ->
                             V                             -> V
                         end,
                 {ok, CurrentFilters, State1}
-                    =  wsclient_filter_show(State0#?MODULE{filters = [{Key, Value} | Filters]}),
+                    =  wsclient_filter_show(State0#?MODULE{filters = [{header, Key, Value} | Filters]}),
                 {ok, <<"==> Update filters\n", CurrentFilters/binary>>, State1}
             catch
                 _:_ -> {ok, <<"[ERROR] Undefined key: ", KeyBin/binary, "\n">>, State0}
@@ -266,7 +272,7 @@ do_show_message(Filters, Message) -> do_show_message_impl(Filters, Message).
 -spec do_show_message_impl([filter()], wslogi_msg:message()) -> boolean().
 do_show_message_impl([], _) ->
     true;
-do_show_message_impl([{Key, Value} | T], Message) ->
+do_show_message_impl([{header, Key, Value} | T], Message) ->
     Headers = wslogi_msg:get_headers(Message),
     case proplists:get_value(Key, Headers, undefined) of
         undefined -> false;
@@ -276,9 +282,9 @@ do_show_message_impl([{Key, Value} | T], Message) ->
                 false -> false
             end
     end;
-do_show_message_impl([H | T], Message) ->
+do_show_message_impl([{re, _, MP} | T], Message) ->
     MsgBin = wslogi_msg:get_message_binary(Message),
-    case re:run(MsgBin, H) of
+    case re:run(MsgBin, MP) of
         {match, _} -> do_show_message_impl(T, Message);
         nomatch    -> false
     end.
@@ -352,10 +358,10 @@ filters_to_iolist(Filters) ->
 -spec filters_to_iolist_impl([filter()], non_neg_integer(), [filter()]) -> iodata().
 filters_to_iolist_impl([], _, Result) ->
     lists:reverse(Result);
-filters_to_iolist_impl([{K, V} | T], Num, Result) ->
-    filters_to_iolist_impl([[to_binary(K), " ", V] | T], Num, Result);
-filters_to_iolist_impl([H | T], Num, Result) ->
-    filters_to_iolist_impl(T, Num + 1, [ ["  > ", integer_to_binary(Num), <<" : ">>, H, <<"\n">>] | Result]).
+filters_to_iolist_impl([{header, K, V} | T], Num, Result) ->
+    filters_to_iolist_impl([{re, [to_binary(K), " ", V], nil} | T], Num, Result);
+filters_to_iolist_impl([{re, V, _} | T], Num, Result) ->
+    filters_to_iolist_impl(T, Num + 1, [ ["  > ", integer_to_binary(Num), " : ", V, "\n"] | Result]).
 
 %% @doc Take out the one from the space-separated arguments.
 -spec shift(binary()) -> {Arg :: binary() | undefined, Rest :: binary()}.
@@ -377,6 +383,12 @@ to_binary(Term) ->
 %%----------------------------------------------------------------------------------------------------------------------
 
 -ifdef(TEST).
+
+-define(RE(X),
+        (fun() ->
+                 {ok, __MP} = re:compile(X),
+                 {re, X, __MP}
+         end)()).
 
 websocket_handle_test_() ->
     State0 = #?MODULE{ip = {192,168,0,1}},
@@ -464,20 +476,36 @@ websocket_handle_test_() ->
                ?assertMatch({_, _}, binary:match(Msg, <<"ERROR">>))
        end},
       {"filter add",
-       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [<<"hoge">>]}},
+       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [{re, <<"hoge">>, _}]}},
                      websocket_handle({text, <<"filter add hoge">>}, req, State0))},
       {"filter add: Enclosed in double quotes",
-       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [<<"hoge \"fugo\"">>]}},
+       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [{re, <<"hoge \"fugo\"">>, _}]}},
                      websocket_handle({text, <<"filter add \"hoge \"fugo\"\"">>}, req, State0))},
-      {"filter remove",
-       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [<<"two">>]}},
-                     websocket_handle({text, <<"filter remove 1 3">>}, req, State0#?MODULE{filters = [<<"one">>, <<"two">>, <<"three">>]}))},
-      {"filter remove: It ignore, if it does not exist",
-       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [<<"two">>]}},
-                     websocket_handle({text, <<"filter remove 1 4">>}, req, State0#?MODULE{filters = [<<"one">>, <<"two">>]}))},
-      {"filter show",
+      {"filter add: bad arguments",
        fun() ->
-               {reply, {text, Msg}, _, _} = websocket_handle({text, <<"filter show">>}, req, State0#?MODULE{filters = [<<"hoge">>]}),
+               {reply, {text, Msg}, _, State0} = websocket_handle({text, <<"filter add *hoge*">>}, req, State0),
+               ?assertMatch({_, _}, binary:match(Msg, <<"ERROR">>))
+       end},
+      {"filter remove",
+       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [{re, <<"two">>, _}]}},
+                     websocket_handle({text, <<"filter remove 1 3">>}, req,
+                                      State0#?MODULE{filters = [?RE(B) || B <- [<<"one">>, <<"two">>, <<"three">>]]}))},
+      {"filter remove: It ignore, if it does not exist",
+       ?_assertMatch({reply, {text, _}, _, #?MODULE{filters = [{re, <<"two">>, _}]}},
+                     websocket_handle({text, <<"filter remove 1 4">>}, req,
+                                      State0#?MODULE{filters = [?RE(B) || B <- [<<"one">>, <<"two">>]]}))},
+      {"filter show: re",
+       fun() ->
+               {reply, {text, Msg}, _, _}
+                   = websocket_handle({text, <<"filter show">>}, req,
+                                      State0#?MODULE{filters = [?RE(B) || B <- [<<"hoge">>]]}),
+               ?assertMatch({_, _}, binary:match(Msg, <<"hoge">>))
+       end},
+      {"filter show: header",
+       fun() ->
+               {reply, {text, Msg}, _, _}
+                   = websocket_handle({text, <<"filter show">>}, req,
+                                      State0#?MODULE{filters = [{header, K, V} || {K, V} <- [{a, <<"hoge">>}, {b, <<"fugo">>}]]}),
                ?assertMatch({_, _}, binary:match(Msg, <<"hoge">>))
        end},
       {"filter header: undefined key",
@@ -488,13 +516,13 @@ websocket_handle_test_() ->
       {"filter header",
        fun() ->
                _ = ip,
-               ?assertMatch({reply, {text, _}, _, #?MODULE{filters = [{ip, <<"{192,168,0,1}">>}]}},
+               ?assertMatch({reply, {text, _}, _, #?MODULE{filters = [{header, ip, <<"{192,168,0,1}">>}]}},
                             websocket_handle({text, <<"filter header ip {192,168,0,1}">>}, req, State0))
        end},
       {"filter header ip: Special case",
        fun() ->
                _ = ip,
-               ?assertMatch({reply, {text, _}, _, #?MODULE{filters = [{ip, <<"{192,168,0,1}">>}]}},
+               ?assertMatch({reply, {text, _}, _, #?MODULE{filters = [{header, ip, <<"{192,168,0,1}">>}]}},
                             websocket_handle({text, <<"filter header ip">>}, req, State0))
        end},
       {"Undefined command",
@@ -515,19 +543,21 @@ websocket_info_test_() ->
      {"filteling: log_level",
       ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?INFO, Msg), req, State0))},
      {"filteling: using word (partial match)",
-      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"ssa">>]}))},
+      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [?RE(<<"ssa">>)]}))},
      {"filteling: using word (not match)",
-      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"hoge">>]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [?RE(<<"hoge">>)]}))},
      {"filteling: using header",
-      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{ip, <<"{192,168,0,1}">>}]}))},
+      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{header, ip, <<"{192,168,0,1}">>}]}))},
      {"filteling: using header (not exist this key in headers)",
-      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{hoge, <<"fugo">>}]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{header, hoge, <<"fugo">>}]}))},
      {"filteling: usgin header (not match)",
-      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{ip, <<"{127,0,0,1}">>}]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [{header, ip, <<"{127,0,0,1}">>}]}))},
      {"filteling: A and B...",
-      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [<<"hoge">>, {ip, <<"{192,168,0,1}">>}]}))},
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [?RE(<<"hoge">>), {header, ip, <<"{192,168,0,1}">>}]}))},
      {"filteling: do_watching",
-      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{do_watching = false}))}
+      ?_assertMatch({ok, _, _},       websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{do_watching = false}))},
+     {"filteling: using regexp",
+      ?_assertMatch({reply, _, _, _}, websocket_info(wslogi_msg:put(?DEBUG, Msg), req, State0#?MODULE{filters = [?RE(<<"m.s[a-z]*">>)]}))}
     ].
 
 level_number_test_() ->
