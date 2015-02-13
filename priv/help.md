@@ -1,22 +1,33 @@
 
 The wslogi commands are:
 - filter
-    - `filter add    <word>`
-    - `filter remove <number>`
+    - `filter add <word>`
+        - Add a filter of log to be output, using a regular expression.
+        - If those that meet one of the filter conditions, output the log.
+    - `filter remove <number> [<number>]`
+        - Remove the filters.
     - `filter show`
+        - Show the current filters.
     - `filter header <key> <value>`
+        - Add a filter that target the headers.
         - Special case:
-            - filter header ip [<address>]
+            - `filter header ip [<address>]`
                 - default: your ip address
                 - e.g. {192,168,0,1}
 - help
     - `help`
+        - Print this.
 - level
     - `level list`
+        - Print the log level list that can be specified.
     - `level show`
+        - Show the current log level.
     - `level <number>`
     - `level [+ | -]<level> [ [+ | -]<level> ]`
+        - Update the log level.
 - start
     - `start`
+        - Start the print of the log.
 - stop
     - `stop`
+        - Stop the print of the log.
