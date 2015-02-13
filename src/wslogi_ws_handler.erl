@@ -56,9 +56,9 @@ websocket_init(_TransportName, Req0, _Opts) ->
 websocket_handle({text, Msg}, Req, State0) ->
     try wsclient_command(Msg, State0) of
         {ok, Response, State} -> {reply, {text, Response}, Req, State};
-        {error, State}        -> {ok, Req, State}
+        {error, State}        -> {reply, {text, <<"Undefined Command\n">>}, Req, State}
     catch
-        _:_ -> {ok, Req, State0}
+        _:_ -> {reply, {text, <<"[ERROR]: Bad arguments">>}, Req, State0}
     end;
 websocket_handle(_Data, Req, State) ->
     {ok, Req, State}.
@@ -437,7 +437,10 @@ websocket_handle_test_() ->
                             websocket_handle({text, <<"level 3">>}, req, State))
        end},
       {"level <number>: bad arguments",
-       ?_assertMatch({ok, _, _}, websocket_handle({text, <<"level 3hoge">>}, req, State0))},
+       fun() ->
+               {reply, {text, Msg}, _, _} = websocket_handle({text, <<"level 3hoge">>}, req, State0),
+               ?assertMatch({_, _}, binary:match(Msg, <<"ERROR">>))
+       end},
       {"level <number> <number>: The second arg is ignored",
        fun() ->
                State = State0#?MODULE{log_level = ?DEBUG},
@@ -526,7 +529,10 @@ websocket_handle_test_() ->
                             websocket_handle({text, <<"filter header ip">>}, req, State0))
        end},
       {"Undefined command",
-       ?_assertMatch({ok, _, _}, websocket_handle({text, <<"hoge">>}, req, State0))}
+       fun() ->
+               {reply, {text, Msg}, _, _} = websocket_handle({text, <<"hoge">>}, req, State0),
+               ?assertMatch({_, _}, binary:match(Msg, <<"Undefined Command">>))
+       end}
      ]}.
 
 websocket_info_test_() ->
