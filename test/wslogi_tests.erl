@@ -4,13 +4,19 @@
 -module(wslogi_tests).
 -include_lib("eunit/include/eunit.hrl").
 
--on_load(init/0).
-
 %%----------------------------------------------------------------------------------------------------------------------
 %% Unit Tests
 %%----------------------------------------------------------------------------------------------------------------------
 
-start_and_stop_test_() ->
+wslogi_test_() ->
+    {setup,
+     fun()        -> {ok, Started} = application:ensure_all_started(cowboy), Started end,
+     fun(Started) -> [application:stop(X) || X <- Started] end,
+     [
+      start_and_stop()
+     ]}.
+
+start_and_stop() ->
     [
      {"If it does not exist, stop returns error",
       fun() ->
@@ -24,12 +30,3 @@ start_and_stop_test_() ->
               ?assertEqual(ok, wslogi:stop(Port))
       end}
     ].
-
-%%----------------------------------------------------------------------------------------------------------------------
-%% Internal Functions
-%%----------------------------------------------------------------------------------------------------------------------
-
--spec init() -> ok.
-init() ->
-    _ = application:ensure_all_started(cowboy),
-    ok.

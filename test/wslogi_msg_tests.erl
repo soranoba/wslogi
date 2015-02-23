@@ -5,7 +5,6 @@
 -include("wslogi_internal.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--on_load(init/0).
 -define(Message, <<"message">>).
 -define(Headers, [{ip, {192,168,0,1}}, {method, <<"GET">>}]).
 
@@ -13,7 +12,18 @@
 %% Unit Tests
 %%----------------------------------------------------------------------------------------------------------------------
 
-get_and_put_test_() ->
+wslogi_msg_test_() ->
+    {setup,
+     fun()        -> {ok, Started} = application:ensure_all_started(gproc), Started end,
+     fun(Started) -> [application:stop(X) || X <- Started] end,
+     [
+      get_and_put_test_main(),
+      message_test_main(),
+      watch_and_send_test_main(),
+      message_to_binary_test_main()
+     ]}.
+
+get_and_put_test_main() ->
     [
      {"The put messages can be get",
       fun() ->
@@ -33,7 +43,7 @@ get_and_put_test_() ->
       end}
     ].
 
-message_test_() ->
+message_test_main() ->
     {setup,
      fun setup/0,
      fun teardown/1,
@@ -56,7 +66,7 @@ message_test_() ->
        end}
      ]}.
 
-watch_and_send_test_() ->
+watch_and_send_test_main() ->
     {foreach, local,
      fun setup/0,
      fun teardown/1,
@@ -112,7 +122,7 @@ watch_and_send_test_() ->
        end}
       ]}.
 
-message_to_binary_test_() ->
+message_to_binary_test_main() ->
     [
      {"Check the format (1)",
       fun() ->
@@ -135,11 +145,6 @@ message_to_binary_test_() ->
 %%----------------------------------------------------------------------------------------------------------------------
 %% Internal Functions
 %%----------------------------------------------------------------------------------------------------------------------
-
--spec init() -> ok.
-init() ->
-    _ = application:ensure_all_started(gproc),
-    ok.
 
 -spec setup() -> ok.
 setup() ->
